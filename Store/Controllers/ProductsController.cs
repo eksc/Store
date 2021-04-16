@@ -8,6 +8,7 @@ using Store.Core.Specifications;
 using Store.Infrastructure.Data;
 using Store.WebAPI.DTOs;
 using Store.WebAPI.Errors;
+using Store.WebAPI.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,13 +35,19 @@ namespace Store.WebAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<ProductDTO>>> GetProducts()
+        public async Task<ActionResult<Pagination<ProductDTO>>> GetProducts([FromQuery]ProductSpecificationParams productParams)
         {
-            var specification = new ProductsWithTypesAndBrandsSpecification();
+            var specification = new ProductsWithTypesAndBrandsSpecification(productParams);
+
+            var countSpecification = new ProductWithFiltersForCountSpecification(productParams);
+
+            var totalItems = await _productRepository.CountAsync(specification);
 
             var products = await _productRepository.ListAsync(specification);
 
-            return Ok(_mapper.Map<IReadOnlyList<Product>, IReadOnlyList<ProductDTO>>(products));
+            var data = _mapper.Map<IReadOnlyList<Product>, IReadOnlyList<ProductDTO>>(products);
+
+            return Ok(new Pagination<ProductDTO>(productParams.PageIndex, productParams.PageSize, totalItems, data));
         }
 
         [HttpGet("{id}")]
